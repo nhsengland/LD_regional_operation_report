@@ -1,27 +1,41 @@
-# {PROJECT NAME}
-## NHS England Digitial Analytics and Research Team - PhD Internship Project
+# LEARNING DISABILITIES OPERATIONAL REPORT
+## NHS England South West Intelligence and Insights
 
 ### About the Project
 
-[![status: experimental](https://github.com/GIScience/badges/raw/master/status/experimental.svg)](https://github.com/GIScience/badges#experimental)
+This is an operational report for learning disability inpatients, based on the assuring transformations dataset.
 
-This repository holds code for the {PROJECT NAME} {SHORT DESCRIPTION}
+[Assuring Transformations dataset](https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-collections/assuring-transformation/content)
 
-[Link to original project propsoal](https://nhsx.github.io/nhsx-internship-projects/)
+It covers basic inpatients moves and progress towards inpatient targets.
 
 _**Note:** Only public or fake data are shared in this repository._
 
 ### Project Stucture
 
-- The main code is found in the root of the repository (see Usage below for more information)
-- The accompanying [report](./reports/report.pdf) is also available in the `reports` folder
-- More information about the code usage can be found in the [model card](./model_card.md)
-- {OTHER REPO STRUCTURE}
+- The main code is found in the root of the repository 
+- No dummy data has been provided at this stage
 
 ### Built With
 
-[![Python v3.8](https://img.shields.io/badge/python-v3.8-blue.svg)](https://www.python.org/downloads/release/python-380/)
-- {LIST OF MAIN PACKAGE VERSIONS}
+[R Studio](http://www.rstudio.com/.)  
+[R Statistical Software](https://www.R-project.org/.)  
+
+library(tidyverse)
+library(janitor)
+library(readxl)
+library(DT)
+library(NHSRplotthedots)
+library(lubridate)
+library(zoo)
+library(rpivotTable)
+library(flextable)
+library(snakecase)
+library(gt)
+library(plotly)
+
+In addition there is SQL query to obtain base data from NCDR
+
 
 ### Getting Started
 
@@ -31,31 +45,40 @@ To get a local copy up and running follow these simple steps.
 
 To clone the repo:
 
-`git clone https://github.com/nhsx/{REPO NAME}`
+`git clone https://github.com/ld_ops_rpt`
 
-To create a suitable environment:
-- ```python -m venv _env```
-- `source _env/bin/activate`
-- `pip install -r requirements.txt`
-
-{ADDITIONAL TECHNICAL SUPPORT AND NEEDS} 
 
 ### Usage
-{DESCRIPTION OF CODE}
+
+Code reads in datafile created in SQL from NCDR
+
+Run SQL query and save results as ld_dat_{%b%y}
+
+Using R Studio within UDAL
+
+Open the R project ‘LD Ops Rpt’
+
+Open the markdown document ‘LD_ops_rpt.rmd’
+
+After reading in the libraries there is a line of code that says 
+
+LD_inpatients <- read_excel("ld_dat_{%b%y}.xlsx")  update this to match the excel sheet you have just saved
+
+Ensure that the excel sheet is closed
+
+Then click on knit 
 
 #### Outputs
-{LIST AND DESCRIPTION OF OUTPUTS}
-
-{NOTES ON REPRODUCIBILITY OF RESULTS}
+Report will be produced in an interactive HTML document
 
 #### Datasets
-{DESCRIPTION AND LINKS TO DATASETS}
+Requires access to [NHSE_Sandbox_LDP_Shared]
 
-{LINK TO FAKE DATA TO SUPPORT INITAIL CODE RUNS}
+No synthetic data is available at this time.
 
 ### Roadmap
 
-See the {LINK TO REPO ISSUES} for a list of proposed features (and known issues).
+Report is currently hard coded to SW region.  This can be adjusted to work for other regions.
 
 ### Contributing
 
@@ -85,7 +108,7 @@ of the [Open Government 3.0][ogl] licence.
 
 ### Contact
 
-To find out more about the [Digitial Analytics and Research Team](https://www.nhsx.nhs.uk/key-tools-and-info/nhsx-analytics-unit/) visit our [project website](https://nhsx.github.io/AnalyticsUnit/projects.html) or get in touch at [analytics-unit@nhsx.nhs.uk](mailto:analytics-unit@nhsx.nhs.uk).
+To find out more about the South West Intelligence and Insights Team visit our [South West Intelligence and Insights Team Futures Page](https://future.nhs.uk/SouthWestAnalytics)) or get in touch at [england.southwestanalytics@nhs.net](mailto:england.southwestanalytics@nhs.net).
 
 <!-- ### Acknowledgements -->
 
