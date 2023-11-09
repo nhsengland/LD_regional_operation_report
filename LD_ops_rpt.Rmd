@@ -1,0 +1,1885 @@
+---
+title: "LD Admissions, Discharges, LOS and OOA"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, message=FALSE, warning=FALSE,include=FALSE}
+knitr::opts_chunk$set(message=FALSE, warning=FALSE, echo = FALSE)
+
+library(tidyverse)
+library(janitor)
+library(readxl)
+library(DT)
+#library(qicharts2)
+library(NHSRplotthedots)
+library(lubridate)
+library(zoo)
+library(rpivotTable)
+library(flextable)
+library(snakecase)
+#library(RODBC)
+library(gt)
+library(plotly)
+library(readxl)
+
+
+LD_inpatients <- read_excel("ld_dat_oct23.xlsx")
+
+# clean data names
+LD_inpatients <- clean_names(LD_inpatients)
+
+# convert report date to date
+LD_inpatients <- LD_inpatients %>% mutate(timeperiod = as.POSIXct(timeperiod))
+
+# create function for plt the dots SPC charts
+# ptd function
+ptd_plt <- function (dat, imp, perc, ylab, title) {
+  p <- ptd_spc(
+    dat,
+    value_field = x,
+    date_field = timeperiod,
+    improvement_direction =  imp
+  )
+  p <- ptd_create_ggplot(
+    p,
+    icons_position = 'none',
+    x_axis_date_format = "%b-%y",
+    percentage_y_axis = perc,
+    point_size = 2,
+    x_axis_label = NULL,
+    y_axis_label = ylab,
+    main_title	= title
+  )
+  p
+}
+
+
+
+########################
+# admissions breakdown #
+########################
+
+# monthly admissions
+admits <- LD_inpatients %>% 
+  filter (ccgorsc == "CCG") %>%
+  group_by(timeperiod) %>%
+  summarise(x = sum (spell_admission)) %>%
+  ungroup()
+
+# monthly admissions LD only
+admits_ld <- LD_inpatients %>% 
+  filter (ccgorsc == "CCG", 
+  patient_category =="Learning Disability Only") %>%
+  group_by(timeperiod) %>%
+  summarise(x = sum (spell_admission)) %>%
+  ungroup()
+
+# monthly admissions asc only
+admits_asc <- LD_inpatients %>% 
+  filter (ccgorsc == "CCG", 
+  patient_category =="Autistic Spectrum Condition Only") %>%
+  group_by(timeperiod) %>%
+  summarise(x = sum (spell_admission)) %>%
+  ungroup()
+
+# monthly admissions both
+admits_both <- LD_inpatients %>% 
+  filter (ccgorsc == "CCG", 
+  patient_category =="Learning Disability and Autistic Spectrum") %>%
+  group_by(timeperiod) %>%
+  summarise(x = sum (spell_admission)) %>%
+  ungroup()
+
+# monthly admissions other
+admits_other <- LD_inpatients %>% 
+  filter (ccgorsc == "CCG", 
+  patient_category =="None of The Above") %>%
+  group_by(timeperiod) %>%
+  summarise(x = sum (spell_admission)) %>%
+  ungroup()
+
+########################
+# discharges breakdown #
+########################
+
+# monthly discharges
+disch <- LD_inpatients %>% 
+  filter (ccgorsc == "CCG") %>%
+  group_by(timeperiod) %>%
+  summarise(x = sum (spell_discharge)) %>%
+  ungroup()
+
+# monthly discharges LD only
+disch_ld <- LD_inpatients %>% 
+  filter (ccgorsc == "CCG", 
+  patient_category =="Learning Disability Only") %>%
+  group_by(timeperiod) %>%
+  summarise(x = sum (spell_discharge)) %>%
+  ungroup()
+
+# monthly discharges asc only
+disch_asc <- LD_inpatients %>% 
+  filter (ccgorsc == "CCG", 
+  patient_category =="Autistic Spectrum Condition Only") %>%
+  group_by(timeperiod) %>%
+  summarise(x = sum (spell_discharge)) %>%
+  ungroup()
+
+# monthly discharges both
+disch_both <- LD_inpatients %>% 
+  filter (ccgorsc == "CCG", 
+  patient_category =="Learning Disability and Autistic Spectrum") %>%
+  group_by(timeperiod) %>%
+  summarise(x = sum (spell_discharge)) %>%
+  ungroup()
+
+# monthly admissions other
+disch_other <- LD_inpatients %>% 
+  filter (ccgorsc == "CCG", 
+  patient_category =="None of The Above") %>%
+  group_by(timeperiod) %>%
+  summarise(x = sum (spell_discharge)) %>%
+  ungroup()
+
+##############
+# net change #
+##############
+
+# net change in inpatients
+ad_dis <- LD_inpatients %>% 
+  filter (ccgorsc == "CCG") %>%
+  group_by(timeperiod) %>%
+  summarise(admissions = sum (spell_admission), 
+            discharges = sum (spell_discharge),
+            x = admissions-discharges) %>%
+  ungroup()
+
+# net change in LD inpatients 
+ad_dis_ld <- LD_inpatients %>% 
+  filter (ccgorsc == "CCG",
+          patient_category =="Learning Disability Only") %>%
+  group_by(timeperiod) %>%
+  summarise(admissions = sum (spell_admission), 
+            discharges = sum (spell_discharge),
+            x = admissions-discharges) %>%
+  ungroup()
+
+# net change in asc inpatients
+ad_dis_asc <- LD_inpatients %>% 
+  filter (ccgorsc == "CCG",
+          patient_category =="Autistic Spectrum Condition Only") %>%
+  group_by(timeperiod) %>%
+  summarise(admissions = sum (spell_admission), 
+            discharges = sum (spell_discharge),
+            x = admissions-discharges) %>%
+  ungroup()
+
+# net change in both inpatients
+ad_dis_both <- LD_inpatients %>% 
+  filter (ccgorsc == "CCG",
+          patient_category =="Learning Disability and Autistic Spectrum") %>%
+  group_by(timeperiod) %>%
+  summarise(admissions = sum (spell_admission), 
+            discharges = sum (spell_discharge),
+            x = admissions-discharges) %>%
+  ungroup()
+
+# net change in none inpatients
+ad_dis_other <- LD_inpatients %>% 
+  filter (ccgorsc == "CCG",
+          patient_category =="None of The Above") %>%
+  group_by(timeperiod) %>%
+  summarise(admissions = sum (spell_admission), 
+            discharges = sum (spell_discharge),
+            x = admissions-discharges) %>%
+  ungroup()
+
+##################################
+# 2 year+ numbers and percentage #
+##################################
+
+# 2 year los proportions & numbers
+los_2yr <- LD_inpatients %>%
+  select(timeperiod, spell_los, ccgorsc) %>%
+  filter (ccgorsc == "CCG", 
+          spell_los != 'NULL') %>%
+  mutate(spell_los = as.numeric(spell_los),   
+         los_two_plus = spell_los > 730) %>%
+  group_by(timeperiod) %>%
+  summarise(two_plus = sum (los_two_plus),
+            tot = n(),
+            perc =  two_plus / tot) %>%
+    ungroup()
+
+# ptd object
+los_2yr_no <- ptd_spc(los_2yr,
+        value_field = two_plus,
+        date_field = timeperiod,
+        improvement_direction =  "decrease")
+
+# ptd object
+los_2yr_per <- ptd_spc(los_2yr,
+        value_field = perc,
+        date_field = timeperiod,
+        improvement_direction =  "decrease")
+
+# ptd plot 2 years number
+p_los_2yr_no <- ptd_create_ggplot(
+  los_2yr_no,
+  icons_position = 'none',
+  x_axis_date_format = "%b-%y",
+  percentage_y_axis = FALSE,
+  point_size = 2,
+  y_axis_label = 'Number of patients',
+  x_axis_label = NULL,
+  main_title	= "Number of inpatients 2 year LOS at end of month"
+) 
+
+# ptd plot 2 years percent
+p_los_2yr_per <- ptd_create_ggplot(
+  los_2yr_per,
+  icons_position = 'none',
+  x_axis_date_format = "%b-%y",
+  percentage_y_axis = TRUE,
+  point_size = 2,
+  y_axis_label = 'Percentage of patients',
+  x_axis_label = NULL,
+  main_title	= "Percentage of inpatients 2 year LOS at end of month"
+) 
+
+##########################
+# adult los by bed types #
+##########################
+
+# all bed types
+los_bt_all <- LD_inpatients %>%
+  filter (ccgorsc == "CCG", 
+          spell_discharge == '1') %>%
+  mutate(spell_los = as.numeric(difftime(ymd(spell_end_date), 
+         ymd(spell_start_date), units = "days")))
+  
+# create plot with loess fitted trend line
+ad_los_all <- ggplot (los_bt_all, aes(x= timeperiod, y = spell_los) ) +
+  labs (x = " ", y = "Length of stay") +
+  geom_point(color = "blue") + 
+  geom_smooth(size = 0.6, color = "black") +
+  theme_minimal()
+
+# LD bed types
+los_bt_ld <- LD_inpatients %>%
+  filter (ccgorsc == "CCG", 
+          spell_discharge == '1',
+          bed_detail == 'Learning Disabilities') %>%
+  mutate(spell_los = as.numeric(difftime(ymd(spell_end_date), 
+         ymd(spell_start_date), units = "days")))
+  
+# create plot with loess fitted trend line
+ad_los_ld <- ggplot (los_bt_ld, aes(x= timeperiod, y = spell_los) ) +
+  labs (x = " ", y = "Length of stay") +
+  geom_point(color = "blue") + 
+  geom_smooth(size = 0.5, color = "black") +
+  theme_minimal()
+
+# LD bed types
+los_bt_ad <- LD_inpatients %>%
+  filter (ccgorsc == "CCG", 
+          spell_discharge == '1',
+          !bed_detail == 'Learning Disabilities') %>%
+  mutate(spell_los = as.numeric(difftime(ymd(spell_end_date), 
+         ymd(spell_start_date), units = "days")))
+  
+# create plot with loess fitted trend line
+ad_los_ad <- ggplot (los_bt_ad, aes(x= timeperiod, y = spell_los) ) +
+  labs (x = " ", y = "Length of stay") +
+  geom_point(color = "blue") + 
+  geom_smooth(size = 0.5, color = "black") +
+  theme_minimal()
+
+###############
+# out of area #
+###############
+
+##  ooa
+LD_ooa <- LD_inpatients %>%
+  filter (ccgorsc == "CCG") %>%
+  replace_na(list(oap_reason_na = "Y")) %>%
+  pivot_longer(cols = starts_with("oap"),
+    names_to = "OOA_reason") %>%
+  filter (value == "Y") %>%
+  mutate(ooa_flag = if_else (OOA_reason == 'oap_reason_na', 
+                             0, 
+                             1)) %>%
+  group_by(timeperiod) %>%
+  summarise(ooa = sum (ooa_flag),
+            tot = n(),
+            perc =  ooa / tot) %>%
+  ungroup()
+ 
+# ooa ptd object numbers            
+ooa_no <- ptd_spc(LD_ooa,
+        value_field = ooa,
+        date_field = timeperiod,
+        improvement_direction =  "decrease")
+
+# ooa ptd object percent  
+ooa_per <- ptd_spc(LD_ooa,
+                  value_field = perc,
+                  date_field = timeperiod,
+                  improvement_direction =  "decrease")
+
+# ooa plot num
+p_ooa_no <- ptd_create_ggplot(
+  ooa_no,
+  icons_position = 'none',
+  x_axis_date_format = "%b-%y",
+  percentage_y_axis = FALSE,
+  point_size = 2,
+  y_axis_label = 'Number of patients',
+  x_axis_label = NULL,
+  main_title	= "Number of inpatients in out of area placement at end of month"
+) 
+
+# ooa plt perc
+p_ooa_per <- ptd_create_ggplot(
+  ooa_per,
+  icons_position = 'none',
+  x_axis_date_format = "%b-%y",
+  percentage_y_axis = TRUE,
+  point_size = 2,
+  y_axis_label = 'Percentage of patients',
+  x_axis_label = NULL,
+  main_title	= "Percentage of inpatients in out of area placement at end of month"
+) 
+    
+ooa_reasons <- LD_inpatients %>%
+  select (starts_with("oap")) %>%
+  colnames ()
+
+ooa_reasons <- data.frame(ooa_reasons)
+
+LD_inpatients <- LD_inpatients %>%
+  mutate (area = if_else(
+    ccgorsc == 'CCG',
+    word(originating_ccgics_name, 1, 2, sep = ' '),
+    word(originating_ccgics_name, 1, 2, sep = ' ')
+  )) %>%
+  mutate (area = ifelse (area == 'NHS KERNOW', 'NHS CORNWALL', area))
+
+##
+ooa_area <- function(area_var){
+
+reas_ooa <- LD_inpatients %>%
+  filter (area == area_var) %>%
+  replace_na(list(oap_reason_na = "Y")) %>%
+  pivot_longer(cols = starts_with("oap"),
+    names_to = "OOA_reason") %>%
+  filter (value == "Y") %>%
+  mutate(ooa_flag = if_else (OOA_reason == 'oap_reason_na', 
+                             0, 
+                             1)) %>%
+  group_by(ccgorsc, timeperiod, originating_ccgics_name, OOA_reason) %>%
+  summarise(gp_tot = n())  %>%
+  ungroup() %>% 
+  full_join(ooa_reasons, by = character() ) %>%
+  mutate(num = ifelse (OOA_reason == ooa_reasons,gp_tot, 0 )) %>%
+  select (ccgorsc, timeperiod, ooa_reasons, num) %>%
+  group_by(ccgorsc, timeperiod, ooa_reasons) %>%
+  summarise (num = sum(num)) %>%
+  pivot_wider(names_from = 'timeperiod',
+              values_from = 'num') %>%
+  filter(ooa_reasons != 'oap_reason_na') %>%
+  mutate(ooa_reasons = str_remove(ooa_reasons, 'oap_reason_'))
+
+ICB_ooa <- reas_ooa %>%
+  filter(ccgorsc == 'CCG') %>%
+  dplyr::select (-ccgorsc) %>%
+  adorn_totals()
+
+sc_ooa <- reas_ooa %>%
+  filter(ccgorsc == 'SC') %>%
+  dplyr::select (-ccgorsc) %>%
+  adorn_totals()
+
+total <- reas_ooa %>% adorn_totals %>%
+  filter(ccgorsc == 'Total')
+
+total$ccgorsc <- 'GRAND TOTAL'
+
+tot_ooa <- rbind(ICB_ooa,sc_ooa, total)
+  
+ft <- flextable(tot_ooa)
+
+ft <- bg(ft, i = 10, bg = "#E8EDEE")
+ft <- bg(ft, i = 20, bg = "#E8EDEE")
+ft <- bg(ft, i = 21, bg = "#41B6E6")
+ft <- fontsize(ft, size = 8, part = "all")
+ft <- bold(ft, i = 10)
+ft <- bold(ft, i= 20)
+ft <- bold(ft, i = 21)
+
+ft
+}
+
+ooa_area_sw <- function(){
+
+reas_ooa <- LD_inpatients %>%
+  #filter (area == area_var) %>%
+  replace_na(list(oap_reason_na = "Y")) %>%
+  pivot_longer(cols = starts_with("oap"),
+    names_to = "OOA_reason") %>%
+  filter (value == "Y") %>%
+  mutate(ooa_flag = if_else (OOA_reason == 'oap_reason_na', 
+                             0, 
+                             1)) %>%
+  group_by(ccgorsc, timeperiod, originating_ccgics_name, OOA_reason) %>%
+  summarise(gp_tot = n())  %>%
+  ungroup() %>% 
+  full_join(ooa_reasons, by = character() ) %>%
+  mutate(num = ifelse (OOA_reason == ooa_reasons,gp_tot, 0 )) %>%
+  select (ccgorsc, timeperiod, ooa_reasons, num) %>%
+  group_by(ccgorsc, timeperiod, ooa_reasons) %>%
+  summarise (num = sum(num)) %>%
+  pivot_wider(names_from = 'timeperiod',
+              values_from = 'num') %>%
+  filter(ooa_reasons != 'oap_reason_na') %>%
+  mutate(ooa_reasons = str_remove(ooa_reasons, 'oap_reason_'))
+
+ICB_ooa <- reas_ooa %>%
+  filter(ccgorsc == 'CCG') %>%
+  dplyr::select (-ccgorsc) %>%
+  adorn_totals()
+
+sc_ooa <- reas_ooa %>%
+  filter(ccgorsc == 'SC') %>%
+  dplyr::select (-ccgorsc) %>%
+  adorn_totals()
+
+total <- reas_ooa %>% adorn_totals %>%
+  filter(ccgorsc == 'Total')
+
+total$ccgorsc <- 'GRAND TOTAL'
+
+tot_ooa <- rbind(ICB_ooa,sc_ooa, total)
+  
+ft <- flextable(tot_ooa)
+
+ft <- bg(ft, i = 10, bg = "#E8EDEE")
+ft <- bg(ft, i = 20, bg = "#E8EDEE")
+ft <- bg(ft, i = 21, bg = "#41B6E6")
+ft <- fontsize(ft, size = 8, part = "all")
+ft <- bold(ft, i = 10)
+ft <- bold(ft, i= 20)
+ft <- bold(ft, i = 21)
+
+ft
+}
+
+
+
+ v <- LD_inpatients$timeperiod[1]
+#format(v,'%b %y')
+  
+
+
+# spec com
+# 2 year los proportions & numbers
+los_2yr_sc <- LD_inpatients %>%
+  select(timeperiod, spell_los, ccgorsc) %>%
+  filter (ccgorsc == "SC", 
+          spell_los != 'NULL') %>%
+  mutate(spell_los = as.numeric(spell_los),   
+         los_two_plus = spell_los > 730) %>%
+  group_by(timeperiod) %>%
+  summarise(two_plus = sum (los_two_plus),
+            tot = n(),
+            perc =  two_plus / tot) %>%
+  ungroup()
+
+# ptd obj num
+los_2yr_no_sc <- ptd_spc(los_2yr_sc,
+                      value_field = two_plus,
+                      date_field = timeperiod,
+                      improvement_direction =  "decrease")
+
+# ptd obj perc
+los_2yr_per_sc <- ptd_spc(los_2yr_sc,
+                       value_field = perc,
+                       date_field = timeperiod,
+                       improvement_direction =  "decrease")
+
+# ptd plot num
+p_los_2yr_no_sc <- ptd_create_ggplot(
+  los_2yr_no_sc,
+  icons_position = 'none',
+  x_axis_date_format = "%b-%y",
+  percentage_y_axis = FALSE,
+  point_size = 2,
+  y_axis_label = 'Number of patients',
+  x_axis_label = NULL,
+  main_title	= "Number of inpatients 2 year LOS at end of month"
+) 
+
+# ptd plot perc
+p_los_2yr_per_sc <- ptd_create_ggplot(
+  los_2yr_per_sc,
+  icons_position = 'none',
+  x_axis_date_format = "%b-%y",
+  percentage_y_axis = TRUE,
+  point_size = 2,
+  y_axis_label = 'Percentage of patients',
+  x_axis_label = NULL,
+  main_title	= "Percentage of inpatients 2 year LOS at end of month"
+) 
+
+
+# by system
+# 2 year los proportions & numbers
+los_2yr_sy <- LD_inpatients %>%
+  select(timeperiod, 
+         spell_los, 
+         ccgorsc, 
+         originating_ccgics_name) %>%
+  filter (ccgorsc == "CCG", 
+          spell_los != 'NULL') %>%
+  mutate(spell_los = as.numeric(spell_los),
+         los_two_plus = spell_los > 730) %>%
+  group_by(timeperiod, 
+           originating_ccgics_name) %>%
+  summarise(
+    two_plus = sum (los_two_plus),
+    tot = n(),
+    perc =  two_plus / tot
+  ) %>%
+  ungroup()
+
+# ptd obj 2y by system num
+los_2yr_no_sy <- ptd_spc(los_2yr_sy,
+                         value_field = two_plus,
+                         date_field = timeperiod,
+                         facet_field = originating_ccgics_name, 
+                         improvement_direction =  "decrease")
+
+# ptd obj 2y by system perc
+los_2yr_per_sy <- ptd_spc(los_2yr_sy,
+                          value_field = perc,
+                          date_field = timeperiod,
+                          facet_field = originating_ccgics_name, 
+                          improvement_direction =  "decrease")
+
+# ptd  plot 2yr num by system 
+p_los_2yr_no_sy <- ptd_create_ggplot(
+  los_2yr_no_sy,
+  icons_position = 'none',
+  x_axis_date_format = "%b-%y",
+  percentage_y_axis = FALSE,
+  point_size = 2,
+  y_axis_label = 'Number of patients',
+  x_axis_label = NULL,
+  main_title	= "Number of inpatients 2 year LOS at end of month"
+) 
+
+# ptd  plot 2yr perc by system 
+p_los_2yr_per_sy <- ptd_create_ggplot(
+  los_2yr_per_sy,
+  icons_position = 'none',
+  x_axis_date_format = "%b-%y",
+  percentage_y_axis = TRUE,
+  point_size = 2,
+  y_axis_label = 'Percentage of patients',
+  x_axis_label = NULL,
+  main_title	= "Percentage of inpatients 2 year LOS at end of month"
+) 
+
+########################
+# inpatients breakdown #
+########################
+
+# monthly inpatients
+imp_all <- LD_inpatients %>% 
+  #filter (ccgorsc == "CCG") %>%
+  group_by(timeperiod) %>%
+  summarise(x = sum (imp_flag)) %>%
+  ungroup()
+
+# monthly inpatients children
+imp_children <- LD_inpatients %>% 
+  filter (age_at_period_end < 18) %>%
+  group_by(timeperiod) %>%
+  summarise(x = sum (imp_flag)) %>%
+  ungroup()
+
+# monthly inpatients ICB
+imp_ICB <- LD_inpatients %>% 
+  filter (ccgorsc == "CCG") %>%
+  group_by(timeperiod) %>%
+  summarise(x = sum (imp_flag)) %>%
+  ungroup()
+
+# monthly inpatients sc
+imp_sc <- LD_inpatients %>% 
+  filter (ccgorsc == "SC") %>%
+  group_by(timeperiod) %>%
+  summarise(x = sum (imp_flag)) %>%
+  ungroup()
+
+# monthly inpatients ICB LD
+imp_ld <- LD_inpatients %>% 
+  filter (ccgorsc == "CCG",
+          patient_category =="Learning Disability Only") %>%
+  group_by(timeperiod) %>%
+  summarise(x = sum (imp_flag)) %>%
+  ungroup()
+
+# monthly inpatients ICB asc
+imp_asc <- LD_inpatients %>% 
+  filter (ccgorsc == "CCG",
+          patient_category =="Autistic Spectrum Condition Only") %>%
+  group_by(timeperiod) %>%
+  summarise(x = sum (imp_flag)) %>%
+  ungroup()
+
+# monthly inpatients ICB both
+imp_both <- LD_inpatients %>% 
+  filter (ccgorsc == "CCG",
+          patient_category =="Learning Disability and Autistic Spectrum") %>%
+  group_by(timeperiod) %>%
+  summarise(x = sum (imp_flag)) %>%
+  ungroup()
+
+
+########################
+# inpatient trajectory #
+########################
+
+# create current inpatients with trajectory at mar 2024 graph
+
+date <- max(LD_inpatients$timeperiod)
+curr_imp <- LD_inpatients %>% 
+  filter (timeperiod == max(timeperiod),
+          age_at_period_end > 17,
+          imp_flag== '1') 
+
+lab <- paste(format(date, format='%b %y'),'-',nrow(curr_imp))
+
+# convert spell los to numeric
+LD_inpatients$spell_los <- as.numeric(LD_inpatients$spell_los)
+
+#inpatients - calc current inpatients at month end
+imp <- LD_inpatients  %>%
+  filter (imp_flag == '1',
+          age_at_period_end > 17)  %>%
+  group_by(timeperiod) %>%
+  summarise(number = n()) %>%
+  ungroup()
+
+# latest current month in report 
+max_mth <- max(imp$timeperiod)
+
+# create a list of months from latest month to Mar 24
+mths_bet <- interval(max_mth, '2024-03-31') %/% months(1)
+
+# pull the lastest data point from the number of inpatients
+latest <- tail(imp$number,1)
+
+# calculate a straight line trajectory between latest data and the target of 130
+# trajectory needs to start from next month so needs to be of length of months +1
+trajectory <- seq(latest,130,length.out=mths_bet+1 )
+
+# trim the first item in the trajectory as want to draw line from next month
+trajectory <- tail(trajectory, (mths_bet))
+
+#create blank timeline
+# start is the day after latest data
+start <- min(imp$timeperiod)+ days(1)
+
+# create a count of the number of months
+mths_base <- interval( min(imp$timeperiod), '2024-03-31') %/% months(1) 
+
+#  create dummy set of months for entire plot
+mths <- seq(start, length = mths_base+1, by = "months") - days(1)
+
+# count number of months
+n <- length(mths)
+
+# count length of trajectory
+traj_length <- length(trajectory)
+
+# calculate number of months not in the trajectory
+nas <- n-traj_length
+
+# create a number of na's equal to the non trajectory length
+blank_na <- rep(NA, n-traj_length )
+
+# join the nulls and the trajectory
+traj <- c(blank_na, trajectory)
+
+# create data frame of all dates and inpatients and trajectory
+imp_traj <- data.frame(mths, traj)
+
+# make one dataframe with actual data and trajectory data
+imp_traj <- imp_traj %>%
+  left_join(imp, by = c('mths' = 'timeperiod'))
+
+
+imps <- ptd_spc(
+  imp,
+  value_field = number,
+  date_field = timeperiod,
+  fix_after_n_points = 24,
+  improvement_direction =  "decrease")
+
+imps_p <- ptd_create_ggplot(
+  imps,
+  icons_position = 'none',
+  x_axis_date_format = "%b-%y",
+  percentage_y_axis = FALSE,
+  point_size = 2,
+  y_axis_label = 'Number',
+  x_axis_label = NULL,
+  main_title	= "Numbers of inpatients and inpatent trajectory"
+) + 
+  geom_line(data = imp_traj, 
+            aes(x = mths, 
+                y = traj), 
+            colour = "red") +
+  geom_point(
+    data = imp_traj,
+    aes(x = mths, 
+        y = traj),
+    colour = "red",
+    point_size = 2
+  ) +
+  xlim(start, '2024-03-31') +
+  geom_label(
+    data = subset(imp, 
+                  timeperiod == max(timeperiod)),
+    aes(
+      timeperiod,
+      number,
+      label = lab,
+      hjust = 1.2,
+      vjust = 1.2,
+      label.size = NA
+    ),
+    label.size = NA,
+    size = 3
+  ) +
+  geom_label(
+    data = subset(imp_traj, 
+                  mths == max(mths)),
+    aes(
+      mths,
+      traj,
+      label = "Mar 24 - 130",
+      hjust = 0.5,
+      vjust = -2.2
+    ),
+    label.size = NA,
+    size = 3
+  ) + 
+  labs(caption = 'Trajectory based on current position and straight line to 130 as at Mar 2024')
+
+
+####################################################
+
+
+# create current inpatients with trajectory at mar 2024 graph - by area
+
+traj_chart <- function(area_name, target) {
+
+date <- max(LD_inpatients$timeperiod)
+curr_imp <- LD_inpatients %>% 
+  filter (timeperiod == max(timeperiod),
+          area == area_name,
+          imp_flag == '1',
+          age_at_period_end > 17)
+
+lab <- paste(format(date, format='%b %y'),'-',sum(curr_imp$imp_flag))
+
+# convert spell los to numeric
+LD_inpatients$spell_los <- as.numeric(LD_inpatients$spell_los)
+
+#inpatients - calc current inpatients at month end
+imp <- LD_inpatients  %>%
+  filter (imp_flag == '1',
+          area == area_name,
+          age_at_period_end > 17)  %>%
+  group_by(timeperiod) %>%
+  summarise(number = n()) %>%
+  ungroup()
+
+# latest current month in report 
+max_mth <- max(imp$timeperiod)
+
+# create a list of months from latest month to Mar 24
+mths_bet <- interval(max_mth, '2024-03-31') %/% months(1)
+
+# pull the lastest data point from the number of inpatients
+latest <- tail(imp$number,1)
+
+# calculate a straight line trajectory between latest data and the target of 130
+# trajectory needs to start from next month so needs to be of length of months +1
+trajectory <- seq(latest,target,length.out=mths_bet+1 )
+
+# trim the first item in the trajectory as want to draw line from next month
+trajectory <- tail(trajectory, (mths_bet))
+
+#create blank timeline
+# start is the day after latest data
+start <- min(imp$timeperiod)+ days(1)
+
+# create a count of the number of months
+mths_base <- interval( min(imp$timeperiod), '2024-03-31') %/% months(1) 
+
+#  create dummy set of months for entire plot
+mths <- seq(start, length = mths_base+1, by = "months") - days(1)
+
+# count number of months
+n <- length(mths)
+
+# count length of trajectory
+traj_length <- length(trajectory)
+
+# calculate number of months not in the trajectory
+nas <- n-traj_length
+
+# create a number of na's equal to the non trajectory length
+blank_na <- rep(NA, n-traj_length )
+
+# join the nulls and the trajectory
+traj <- c(blank_na, trajectory)
+
+# create data frame of all dates and inpatients and trajectory
+imp_traj <- data.frame(mths, traj)
+
+# make one dataframe with actual data and trajectory data
+imp_traj <- imp_traj %>%
+  left_join(imp, by = c('mths' = 'timeperiod'))
+
+
+# label for final trajectory
+fin_lab <- paste0('Mar 24 - ', target)
+
+imps <- ptd_spc(
+  imp,
+  value_field = number,
+  date_field = timeperiod,
+  fix_after_n_points = 24,
+  improvement_direction =  "decrease")
+
+imps_p <- ptd_create_ggplot(
+  imps,
+  icons_position = 'none',
+  x_axis_date_format = "%b-%y",
+  percentage_y_axis = FALSE,
+  point_size = 2,
+  y_axis_label = 'Number',
+  x_axis_label = NULL,
+  main_title	= "Numbers of inpatients and inpatent trajectory"
+) + 
+  geom_line(data = imp_traj, 
+            aes(x = mths, 
+                y = traj), 
+            colour = "red") +
+  geom_point(
+    data = imp_traj,
+    aes(x = mths, 
+        y = traj),
+    colour = "red",
+    point_size = 2
+  ) +
+  xlim(start, '2024-03-31') +
+  geom_label(
+    data = subset(imp, 
+                  timeperiod == max(timeperiod)),
+    aes(
+      timeperiod,
+      number,
+      label = lab,
+      hjust = 1.2,
+      vjust = 1.2,
+      label.size = NA
+    ),
+    label.size = NA,
+    size = 3
+  ) +
+  geom_label(
+    data = subset(imp_traj, 
+                  mths == max(mths)),
+    aes(
+      mths,
+      traj,
+      label = fin_lab,
+      hjust = 0.5,
+      vjust = -2.2
+    ),
+    label.size = NA,
+    size = 3
+  ) + 
+  labs(caption = 'Trajectory based on current position and straight line to target as at Mar 2024')
+imps_p
+}
+
+##############################
+
+LD_inpatients <- LD_inpatients %>%
+  mutate (system =
+    case_when(ccgorsc == 'CCG' ~ originating_ccgics_name,
+              TRUE ~ submitting_commissioner_name)  )      
+    # case_when(originating_ccgics_name == 'NHS GLOUCESTERSHIRE ICB - 11M' ~ 'Gloucs ICB',
+    #                 originating_ccgics_name == 'NHS DORSET ICB - 11J' ~ 'Dorset ICB',
+    #                 originating_ccgics_name == 'SOUTH WEST SMHPC (ADULT SECURE)' ~ 'SW SMHPC',
+    #                 originating_ccgics_name == 'NHS BATH AND NORTH EAST SOMERSET, SWINDON AND WILTSHIRE ICB - 92G' ~ 'BSW ICB',
+    #                 originating_ccgics_name == 'NHS DEVON ICB - 15N' ~ 'Devon ICB',
+    #                 originating_ccgics_name == 'NHS BRISTOL, NORTH SOMERSET AND SOUTH GLOUCESTERSHIRE ICB - 15C' ~ 'BNSSG ICB',
+    #                 originating_ccgics_name == 'SOUTH WEST COMMISSIONING HUB' ~ 'SW Comm Hub',
+    #                 originating_ccgics_name == 'NHS CORNWALL AND THE ISLES OF SCILLY ICB - 11N' ~ 'Cornwall ICB',
+    #                 originating_ccgics_name == 'NHS SOMERSET ICB - 11X' ~ 'Somerset ICB',
+    # 
+    #                 originating_ccgics_name == 'NHS DORSET (SUB ICB LOCATION)' ~ 'Dorset ICB',
+    #                 originating_ccgics_name == 'SOUTH WEST SMHPC (ADULT SECURE)' ~ 'SW SMHPC',
+    #                 originating_ccgics_name == 'NHS BATH AND NORTH EAST SOMERSET, SWINDON AND WILTSHIRE (SUB ICB LOCATION)' ~ 'BSW ICB',
+    #                 originating_ccgics_name == 'NHS DEVON (SUB ICB LOCATION)' ~ 'Devon ICB',
+    #                 originating_ccgics_name == 'NHS BRISTOL, NORTH SOMERSET AND SOUTH GLOUCESTERSHIRE (SUB ICB LOCATION)' ~ 'BNSSG ICB',
+    #                 originating_ccgics_name == 'SOUTH WEST COMMISSIONING HUB' ~ 'SW Comm Hub',
+    #                 originating_ccgics_name == 'NHS KERNOW (SUB ICB LOCATION)' ~ 'Cornwall ICB',
+    #                 originating_ccgics_name == 'NHS SOMERSET (SUB ICB LOCATION)' ~ 'Somerset ICB',
+    #                 originating_ccgics_name == 'NHS GLOUCESTERSHIRE (SUB ICB LOCATION)' ~ 'Gloucestershire ICB',             
+    #           
+    #                 originating_ccgics_name == 'Dorset and Wessex Mental Health Provider Collaborative' ~ 'Dorset PC',
+    #           
+    #           
+    #                 originating_ccgics_name == 'SOUTH WEST SMHPC (CYPMHS TIER 4)' ~ 'SW SMHPC',
+    #                 originating_ccgics_name == 'SOUTH WEST SMHPC (ADULT EATING DISORDERS)' ~ 'SW Adult ED',   
+    #                 originating_ccgics_name == 'SOUTH WEST SMHPC (ADULT SECURE)' ~ 'SW Adult Sec',               
+    #           
+    #                 TRUE ~ 'Error please check'))
+
+
+
+LD_type <- LD_inpatients %>%
+  select (system, ccgorsc) %>%
+  filter(!duplicated(system)) 
+
+
+LD_hist <- LD_inpatients %>%
+  filter(imp_flag == '1'
+  ) %>%
+  mutate(month = format(timeperiod, "%y-%m"),
+         easy_date = format(timeperiod, "%b-%y") ) %>%
+  select(timeperiod,
+         system
+  ) %>%
+  group_by(timeperiod,
+           system
+  ) %>%
+  summarise (patients = n()) %>%
+  pivot_wider(names_from = timeperiod,
+              values_from = patients) %>%
+  left_join(LD_type, by = "system") %>%
+  arrange(ccgorsc,
+          system) 
+
+LD_hist_ICB <-   LD_hist %>%
+  filter (ccgorsc == "CCG") %>%
+  adorn_totals() %>%
+  select (!ccgorsc)
+
+LD_hist_SC <-   LD_hist %>%
+  filter (ccgorsc == "SC") %>%
+  adorn_totals() %>%
+  select (!ccgorsc)
+
+LD_hist_tot <- LD_hist %>%
+  adorn_totals() %>%
+  select (!ccgorsc) %>%
+  filter (system == 'Total')
+
+LD_hist_comb <- rbind(LD_hist_ICB,LD_hist_SC, LD_hist_tot )
+# 
+# ft <- flextable(LD_hist_comb)
+# ft <- bg(ft, i = 8, bg = "#E8EDEE")
+# ft <- bg(ft, i = 13, bg = "#E8EDEE")
+# ft <- bg(ft, i = 14, bg = "#41B6E6")
+# ft <- fontsize(ft, size = 8, part = "all")
+# ft <- bold(ft, i = 8)
+# ft <- bold(ft, i= 12)
+# ft <- bold(ft, i = 13)
+
+LD_current <- LD_inpatients %>%
+  filter (timeperiod == max(timeperiod),
+          imp_flag == '1') %>%
+  replace_na(list(oap_reason_na = "Y")) %>%
+  pivot_longer(cols = starts_with("oap"),
+               names_to = "OOA_reason") %>%
+  filter (value == "Y") %>%
+  mutate(ooa_flag = if_else (OOA_reason == 'oap_reason_na', 
+                             0, 
+                             1)) %>%
+  filter(!duplicated(unique_id)) %>%
+  select(age_at_period_end,
+         gender,
+         ethnic_category,
+         patient_category,
+         system,
+         ccgorsc,
+         OOA_reason,
+         ooa_flag,
+         ward_security_level,
+         mental_health_act_group,
+         bed_type,
+         status_detail,
+         planned_discharge_destination
+         
+  )
+
+#dis_percent  <- disch_asc %>%
+#  mutate(percentage = paste0(round((x / sum(x))*100,1),'%'),
+#         percentage_two = paste0(round((y / sum(x))*100,1),'%')
+#  )
+
+
+
+########################################
+# current admission approaching 1 year #
+########################################
+
+ten_months <- LD_inpatients %>%
+  mutate(spell_los = as.numeric(spell_los)) %>%
+  filter (timeperiod == max(timeperiod),
+          imp_flag == '1',
+          (spell_los > 300 &  spell_los < 365)) %>%
+  select(system,
+         sitename,
+         spell_start_date,
+         spell_los,
+         ctr_date,
+         outcome_status,
+         status_detail,
+         planned_discharge_destination) %>%
+  mutate(ctr_date = format(ctr_date, '%d %b %y'),
+         spell_start_date = format(spell_start_date, '%d %b %y'),
+         sitename = to_mixed_case(sitename, sep_out = ' ')) %>%
+  rename(admission_date = spell_start_date,
+         los = spell_los,
+         latest_ctr_date = ctr_date,
+         planned_destination = planned_discharge_destination) %>%
+  arrange(system,
+          sitename)
+
+
+### lewis sum table
+
+
+
+
+LD_Data <- LD_inpatients |>
+  rename(`ICB ICS Name` = originating_ccgics_name) |>
+  mutate (spell_los = as.numeric(spell_los))
+
+#######################
+# How many people each system has in hospital @ 2-5 years and 5+ years
+#######################
+Long_Stay <- LD_Data |>
+  filter(spell_los >= 730,
+         timeperiod == max(timeperiod),
+         imp_flag == 1) |>
+  mutate (summary_banding = case_when( spell_los_banding == '2-3 Years'~ 'LOS 2-5 Years', 
+                                       spell_los_banding == '3-4 Years'~ 'LOS 2-5 Years',
+                                       spell_los_banding == '4-5 Years'~ 'LOS 2-5 Years',
+                                       spell_los_banding == '5-10 Years'~ 'LOS 5+ Years',
+                                       spell_los_banding == '10-15 Years'~ 'LOS 5+ Years',
+                                       spell_los_banding == '15-20 Years'~ 'LOS 5+ Years',
+                                       spell_los_banding == '20-30 Years'~ 'LOS 5+ Years',
+                                       spell_los_banding == '30+ Years'~ 'LOS 5+ Years',
+                                       TRUE ~ 'ERROR')) |>
+  group_by (`ICB ICS Name`, summary_banding) |>
+  summarise (`No. of Inpatients` = n())|>
+  pivot_wider(names_from = summary_banding,
+              values_from = `No. of Inpatients`)
+
+View (Long_Stay)
+
+#######################
+# Current position – per system ICB inpatients
+#######################
+Current_Position <- LD_Data |>
+  filter (timeperiod == max(timeperiod),
+          imp_flag == 1,
+          `ICB ICS Name` %in% c('NHS BRISTOL, NORTH SOMERSET AND SOUTH GLOUCESTERSHIRE ICB',
+                                'NHS BATH AND NORTH EAST SOMERSET, SWINDON AND WILTSHIRE ICB',
+                                'NHS CORNWALL AND THE ISLES OF SCILLY ICB',
+                                'NHS DEVON ICB',
+                                'NHS DORSET ICB',
+                                'NHS GLOUCESTERSHIRE ICB',
+                                'NHS SOMERSET ICB') ) |>
+  group_by(`ICB ICS Name`)|>
+  summarise (`No. of Inpatients` = n()) |>
+  #Adding in the Target  
+  mutate(`Target Difference` = case_when (`ICB ICS Name` == 'NHS BRISTOL, NORTH SOMERSET AND SOUTH GLOUCESTERSHIRE ICB' ~ `No. of Inpatients` - 21,
+                                        `ICB ICS Name` == 'NHS BATH AND NORTH EAST SOMERSET, SWINDON AND WILTSHIRE ICB' ~ `No. of Inpatients` - 22,
+                                        `ICB ICS Name` == 'NHS CORNWALL AND THE ISLES OF SCILLY ICB' ~ `No. of Inpatients` - 13,
+                                        `ICB ICS Name` == 'NHS DEVON ICB' ~ `No. of Inpatients` - 28,
+                                        `ICB ICS Name` == 'NHS DORSET ICB' ~ `No. of Inpatients` - 18,
+                                        `ICB ICS Name` == 'NHS GLOUCESTERSHIRE ICB' ~ `No. of Inpatients` - 15,
+                                        `ICB ICS Name` == 'NHS SOMERSET ICB' ~ `No. of Inpatients` - 13,
+                                        TRUE ~ 99999))
+
+
+
+View(Current_Position)
+
+
+############
+#Admissions
+############
+
+Admissions <- LD_Data |>
+  filter (timeperiod == max(timeperiod),
+          spell_admission == 1,
+          `ICB ICS Name` %in% c('NHS BRISTOL, NORTH SOMERSET AND SOUTH GLOUCESTERSHIRE ICB',
+                                'NHS BATH AND NORTH EAST SOMERSET, SWINDON AND WILTSHIRE ICB',
+                                'NHS CORNWALL AND THE ISLES OF SCILLY ICB',
+                                'NHS DEVON ICB',
+                                'NHS DORSET ICB',
+                                'NHS GLOUCESTERSHIRE ICB',
+                                'NHS SOMERSET ICB') ) |>
+  group_by(`ICB ICS Name`)|>
+  summarise (`No. of Admissions` = n())
+
+view(Admissions)
+
+############
+#Discharges
+############
+
+Discharges <- LD_Data |>
+  filter (timeperiod == max(timeperiod),
+          spell_discharge == 1,
+          `ICB ICS Name` %in% c('NHS BRISTOL, NORTH SOMERSET AND SOUTH GLOUCESTERSHIRE ICB',
+                                'NHS BATH AND NORTH EAST SOMERSET, SWINDON AND WILTSHIRE ICB',
+                                'NHS CORNWALL AND THE ISLES OF SCILLY ICB',
+                                'NHS DEVON ICB',
+                                'NHS DORSET ICB',
+                                'NHS GLOUCESTERSHIRE ICB',
+                                'NHS SOMERSET ICB') ) |>
+  group_by(`ICB ICS Name`)|>
+  summarise (`No. of Discharges` = n())
+
+view(Discharges)
+
+#######################
+# Change from last month
+#######################
+
+Monthly_Change <- LD_Data |>
+  filter(timeperiod >= max(timeperiod) %m-% months(1),
+         imp_flag == 1,
+         `ICB ICS Name` %in% c('NHS BRISTOL, NORTH SOMERSET AND SOUTH GLOUCESTERSHIRE ICB',
+                               'NHS BATH AND NORTH EAST SOMERSET, SWINDON AND WILTSHIRE ICB',
+                               'NHS CORNWALL AND THE ISLES OF SCILLY ICB',
+                               'NHS DEVON ICB',
+                               'NHS DORSET ICB',
+                               'NHS GLOUCESTERSHIRE ICB',
+                               'NHS SOMERSET ICB')) |>
+  group_by(`ICB ICS Name`, timeperiod) |>
+  summarise(`No. of Inpatients` = n()) |>
+  mutate(`Monthly Change` = `No. of Inpatients` - lag(`No. of Inpatients`)) |>
+  ungroup()  |>
+  filter (timeperiod == max(timeperiod))
+
+View(Monthly_Change)
+
+
+#######################
+# 12 month Comparison
+#######################
+
+Yearly_Change <- LD_Data |>
+  filter(timeperiod >= max(timeperiod) - years(1),
+         imp_flag == 1,
+         `ICB ICS Name` %in% c('NHS BRISTOL, NORTH SOMERSET AND SOUTH GLOUCESTERSHIRE ICB',
+                               'NHS BATH AND NORTH EAST SOMERSET, SWINDON AND WILTSHIRE ICB',
+                               'NHS CORNWALL AND THE ISLES OF SCILLY ICB',
+                               'NHS DEVON ICB',
+                               'NHS DORSET ICB',
+                               'NHS GLOUCESTERSHIRE ICB',
+                               'NHS SOMERSET ICB')) |>
+  group_by(`ICB ICS Name`, timeperiod) |>
+  summarise(`No. of Inpatients` = n()) |>
+  mutate(`Yearly Change` = `No. of Inpatients` - lag(`No. of Inpatients`, 12)) |>
+  ungroup() |>
+  filter (timeperiod == max(timeperiod))
+
+View(Yearly_Change)
+
+
+##########
+# Mega Table
+##########
+
+Combined_Table <- Current_Position |>
+  left_join(Admissions,
+            by = "ICB ICS Name") |>
+  left_join(Discharges,
+            by = "ICB ICS Name") |>
+  left_join(Monthly_Change,
+            by = "ICB ICS Name") |>
+  left_join(Yearly_Change,
+            by = "ICB ICS Name") |>
+  left_join(Long_Stay,
+            by = "ICB ICS Name") |>
+  select(`ICB ICS Name`,
+         `No. of Inpatients`,
+         `No. of Admissions`, 
+         `No. of Discharges`,
+         `Monthly Change`,
+         `Yearly Change`,
+         `Target Difference`,
+         `LOS 2-5 Years`,
+         `LOS 5+ Years` )
+
+Combined_Table$`No. of Admissions` <- replace(Combined_Table$`No. of Admissions`, is.na(Combined_Table$`No. of Admissions`), 0)
+Combined_Table$`No. of Discharges` <- replace(Combined_Table$`No. of Discharges`, is.na(Combined_Table$`No. of Discharges`), 0)
+
+
+
+
+
+sum_table <- Combined_Table |>
+  gt() |>
+tab_header(
+    title = "LD Inpatient Position",
+    subtitle = paste0("Latest Data from ", format(max(LD_Data$timeperiod), "%d/%m/%Y"))
+    )|>
+tab_footnote(
+    footnote = "Due to late recording, Admissions - Discharges may not reconcile with the Monthly Change",
+  )|>
+  tab_style(
+    style = cell_borders(
+      sides = c("left", "right"),
+      weight = px(2)),
+    locations = cells_body(
+      columns = c(`ICB ICS Name`, `Monthly Change`, `Yearly Change`, `Target Difference`)
+    ))|>
+      tab_style(
+        style = cell_borders(
+          sides = c("top", "bottom"),
+          weight = px(2)),
+        locations = cells_row_groups(
+  )) |>
+    cols_align(
+      align = "center",
+      columns = everything()) |>
+    cols_align(
+        align = "left",
+        columns = `ICB ICS Name`
+    )
+###################
+
+# animated LOS plot
+
+
+
+curr <- clean_names(LD_inpatients)
+curr <- curr |>
+  select(originating_ccgics_name, spell_los_banding, timeperiod, imp_flag, ccgorsc,bed_type ) |>
+  filter(#timeperiod == as.Date('2023-05-31'),
+    imp_flag == 1,
+    bed_type == 'Adult') |>
+  
+  mutate(los_band = case_when (spell_los_banding == "0-3 Months" ~ "a <12 Mths",
+                               spell_los_banding == "3-6 Months" ~ "a <12 Mths",
+                               spell_los_banding == "6-12 Months" ~ "a <12 Mths",
+                               spell_los_banding == "1-2 Years" ~ "a <12 Mths",
+                               spell_los_banding == "2-3 Years" ~ "b 1-5 Yrs",
+                               spell_los_banding == "3-4 Years" ~ "b 1-5 Yrs",
+                               spell_los_banding == "4-5 Years" ~ "b 1-5 Yrs",
+                               spell_los_banding == "5-10 Years" ~ "c 5-10 Yrs",
+                               spell_los_banding == "10-15 Years" ~ "d 10-20 Yrs",
+                               spell_los_banding == "15-20 Years" ~ "d 10-20 Yrs",
+                               spell_los_banding == "20-30 Years" ~ "e 20+ Yrs",
+                               spell_los_banding == "30+ Years" ~ "e 20+ Yrs",
+                               TRUE ~ "Check"),
+         los_band = factor(los_band, 
+                           levels =  c("a <12 Mths",
+                                       "b 1-5 Yrs",
+                                       "c 5-10 Yrs",
+                                       "d 10-20 Yrs",
+                                       "e 20+ Yrs"))) |>
+  filter(!is.na (los_band))|>
+  # levels =  c("20+ Yrs",
+  #             "10-20 Yrs",
+  #             "5-10 Yrs",
+  #             "1-5 Yrs",
+  #             "<12 Mths"))) |>
+  arrange(timeperiod, originating_ccgics_name, los_band) |>
+  
+mutate (
+    originating_ccgics_name = case_when(
+      originating_ccgics_name == 'SOUTH WEST'  ~ 'South West',
+      originating_ccgics_name == 'NHS DORSET ICB' & ccgorsc == 'CCG' ~ 'Dorset ICB',
+      originating_ccgics_name == 'NHS DEVON ICB' & ccgorsc == 'CCG' ~ 'Devon ICB',
+      originating_ccgics_name == 'NHS GLOUCESTERSHIRE ICB' & ccgorsc == 'CCG'~ 'Glouchestershire ICB',
+      originating_ccgics_name == 'NHS BRISTOL, NORTH SOMERSET AND SOUTH GLOUCESTERSHIRE ICB' & ccgorsc == 'CCG'~ 'BNSSG ICB',
+      originating_ccgics_name == 'NHS CORNWALL AND THE ISLES OF SCILLY ICB' & ccgorsc == 'CCG'~ 'Cornwall ICB',
+      originating_ccgics_name == 'NHS BATH AND NORTH EAST SOMERSET, SWINDON AND WILTSHIRE ICB' & ccgorsc == 'CCG' ~ 'BSW ICB',
+      originating_ccgics_name == 'NHS SOMERSET ICB' & ccgorsc == 'CCG' ~ 'Somerset ICB',
+      originating_ccgics_name == 'NHS DORSET ICB' & ccgorsc == 'SC' ~ 'Dorset SC',
+      originating_ccgics_name == 'NHS DEVON ICB' & ccgorsc == 'SC' ~ 'Devon SC',
+      originating_ccgics_name == 'NHS GLOUCESTERSHIRE ICB' & ccgorsc == 'SC'~ 'Glouchestershire SC',
+      originating_ccgics_name == 'NHS BRISTOL, NORTH SOMERSET AND SOUTH GLOUCESTERSHIRE ICB' & ccgorsc == 'SC'~ 'BNSSG SC',
+      originating_ccgics_name == 'NHS CORNWALL AND THE ISLES OF SCILLY ICB' & ccgorsc == 'SC'~ 'Cornwall SC',
+      originating_ccgics_name == 'NHS BATH AND NORTH EAST SOMERSET, SWINDON AND WILTSHIRE ICB' & ccgorsc == 'SC' ~ 'BSW SC',
+      originating_ccgics_name == 'NHS SOMERSET ICB' & ccgorsc == 'SC' ~ 'Somerset SC',
+      TRUE ~ 'Error - please check'
+    )
+  ) |>
+  ungroup() |> 
+  group_by(timeperiod, originating_ccgics_name, los_band, ccgorsc) |>
+  summarise(num = n()) |>
+  ungroup ()
+  
+  
+  los_band <- unique(curr$los_band)
+  originating_ccgics_name <- unique(curr$originating_ccgics_name)
+  timeperiod <- unique(curr$timeperiod)
+  
+  cross <- crossing(timeperiod, originating_ccgics_name, los_band)
+  cross$numb <- 0
+  
+  cross <- cross |>
+    left_join(curr) |>
+    mutate(num = replace_na(num, 0))
+  
+  curr <- cross |>
+    select (!numb)  |>
+  group_by(timeperiod, originating_ccgics_name, ccgorsc) |>
+  mutate (perc = num / sum(num) ,
+          culm = 1 - (cumsum(perc) - (perc*0.5)),
+          perc_t = paste0(round(perc* 100, 0),"%"),
+          perc = round((num / sum(num))* 100,1) )|>
+  ungroup()
+
+
+currt <- curr |>
+  #filter(timeperiod == as.Date('2023-05-31'))
+  mutate(timeperiod = as.character(timeperiod)) |>
+  arrange(los_band)
+currt <- currt |>
+  filter (ccgorsc == 'SC')
+sc_los_plot <-currt |>
+  plot_ly(
+    x = ~perc,
+    y = ~originating_ccgics_name,
+    frame = ~timeperiod,
+    color = ~los_band,
+    text = ~num, 
+    colors = "Blues",
+    textposition = 'outside',
+    textfont = list(color = '#000000'), #, size = 8),
+    showlegend = T, 
+    name = ~los_band,
+    type = "bar",
+    orientation = "h"
+  ) %>%
+  layout(
+    barmode = "stacked",
+    yaxis = list(title = " "),
+    xaxis = list(title = "Percentage of patients"),
+    uniformtext=list(minsize=8, mode='hide'),
+    title = "Percentage of Inptaients by LOS Category"
+  ) |>  layout(uniformtext=list(minsize=8, mode='hide')) |>
+  animation_slider(currentvalue = list(prefix = "Inpatients LOS as at ", 
+                                       font = list(color="red",size=12)),
+                    frame = 1000, 
+                    transition = 700) 
+    
+
+currt <- curr |>
+  #filter(timeperiod == as.Date('2023-05-31'))
+  mutate(timeperiod = as.character(timeperiod)) |>
+  arrange(los_band)
+currt <- currt |>
+  filter (ccgorsc == 'CCG')
+ccg_los_plot <-currt |>
+  plot_ly(
+    x = ~perc,
+    y = ~originating_ccgics_name,
+    frame = ~timeperiod,
+    color = ~los_band,
+    text = ~num, 
+    colors = "Blues",
+    textposition = 'outside',
+    textfont = list(color = '#000000'), #, size = 8),
+    showlegend = T, 
+    name = ~los_band,
+    type = "bar",
+    orientation = "h"
+  ) %>%
+  layout(
+    barmode = "stacked",
+    yaxis = list(title = " "),
+    xaxis = list(title = "Percentage of patients"),
+    uniformtext=list(minsize=8, mode='hide'),
+    title = "Percentage of Inptaients by LOS Category"
+  ) |>  layout(uniformtext=list(minsize=8, mode='hide')) |>
+  animation_slider(currentvalue = list(prefix = "Inpatients LOS as at ", 
+                                       font = list(color="red",size=12)),
+                   frame = 1000, 
+                   transition = 700) 
+
+
+
+```
+
+> **PLEASE NOTE** Please open this report directly in your browser.  This may mean that you need to download it from sharepoint or futures and then open it.  If you open it directly from sharepoint or futures, many aspects of this report will fail or not appear.
+
+## Caveats
+
+Data taken from NCDR `r Sys.Date()`  
+
+All data is for adult ICB commissioned patients, unless otherwise stated.
+Specialised commissioning patients will include children.
+OOA data has a number of DQ issues for more historical data and for those who have been in placement for considerable time.
+
+
+> **Simon Wellesley-Miller**  
+> *Senior Analytical Manager*  
+> South West Performance Analytics Team NHS England  
+> `r Sys.Date()`  
+
+## Summary Table
+
+```{r}
+sum_table
+```
+
+## Current Inpatients {.tabset .tabset-fade .tabset-pills}
+
+### All inpatients
+```{r}
+ptd_plt (imp_all , "decrease", FALSE, "Number", "All AT Inpatients")
+```
+
+### Children
+```{r}
+ptd_plt (imp_children , "decrease", FALSE, "Number", "Inpatients aged <18")
+```
+
+### ICB Only
+```{r}
+ptd_plt (imp_ICB , "decrease", FALSE, "Number", "Inpatients ICB Only")
+```
+
+### Spec Com
+```{r}
+ptd_plt (imp_sc  , "decrease", FALSE, "Number", "Inpatients Specialised Commissioning Only")
+```
+
+### ICB LD
+```{r}
+ptd_plt (imp_ld     , "decrease", FALSE, "Number", "Inpatients ICB LD Only")
+```
+
+### ICB ASC
+```{r}
+ptd_plt (imp_asc  , "decrease", FALSE, "Number", "Inpatients ICB ASC Only")
+```
+
+### ICB LD&ASC
+```{r}
+ptd_plt (imp_both  , "decrease", FALSE, "Number", "Inpatients ICB LD and ASC")
+```
+
+*We continue to see a trend of general reduction in overall patient numbers.*
+
+## Current inpatients approaching 12 month length of stay
+
+This is a list of patients who have a length of stay of between 300 days (10 months) and 365 days (12 months) as at `r format (max_mth, '%d %b %y')`.  This shows placement and admission date, as well as date and outcome of latest CTR.
+
+```{r}
+a <- flextable(ten_months)
+fit_to_width(a, max_width = 8, inc = 0.2, max_iter = 20, unit = "in")
+
+```
+
+
+## Admissions {.tabset .tabset-fade .tabset-pills}
+
+Number of new ICB admission spells in month.  This is a count of patients starting a new spell and so would not include transfers between wards.
+
+### All Admissions
+
+```{r, fig.width=8}
+ptd_plt(admits, "decrease", FALSE,"Number",  "Admissions - all patients")
+```
+
+*Numbers of admissions across the South West are relatively small with a median of 4 per month,  numbers have fluctuated and are not showing any significant trend in either direction*
+
+### LD Admissions
+
+```{r, fig.width=8}
+ptd_plt(admits_ld, "decrease", FALSE,"Number",  "Admissions - LD only patients")
+```
+
+*Numbers of admissions across the South West are relatively small with a median of 4 per month,  numbers have fluctuated and are not showing any significant trend in either direction*
+
+### ASC Admissions
+
+```{r, fig.width=8}
+ptd_plt(admits_asc, "decrease", FALSE,"Number",  "Admissions - ASC only patients")
+```
+
+*Numbers of admissions across the South West are relatively small with a median of 4 per month,  numbers have fluctuated and are not showing any significant trend in either direction*
+
+### LD&ASC Admissions
+
+```{r, fig.width=8}
+ptd_plt(admits_both, "decrease", FALSE,"Number",  "Admissions - LD and ASC patients")
+```
+
+*Numbers of admissions across the South West are relatively small with a median of 4 per month,  numbers have fluctuated and are not showing any significant trend in either direction*
+
+### Other Admissions
+
+```{r, fig.width=8}
+ptd_plt(admits_other, "decrease", FALSE,"Number",  "Admissions - other patients")
+```
+
+*Numbers of admissions across the South West are relatively small with a median of 4 per month,  numbers have fluctuated and are not showing any significant trend in either direction*
+
+
+## Discharges {.tabset .tabset-fade .tabset-pills}
+
+Number of ICB discharged spells in month.  This is a count of patients leaving an inpatient setting and so would not include transfers between wards. 
+
+### All Discharges
+
+```{r , fig.width=8}
+ptd_plt(disch, "increase", FALSE,"Number",  "Discharges - all patients")
+```
+
+*Numbers of discharges across the South West are relatively small with a median of 4 per month,  numbers have fluctuated and are not showing any significant trend in either direction*
+
+### LD Discharges
+
+```{r , fig.width=8}
+ptd_plt(disch_ld, "increase", FALSE,"Number",  "Discharges - LD patients")
+```
+
+*Numbers of discharges across the South West are relatively small with a median of 4 per month,  numbers have fluctuated and are not showing any significant trend in either direction*
+
+### ASC Discharges
+
+```{r , fig.width=8}
+ptd_plt(disch_asc , "increase", FALSE,"Number",  "Discharges - ASC patients")
+```
+
+*Numbers of discharges across the South West are relatively small with a median of 4 per month,  numbers have fluctuated and are not showing any significant trend in either direction*
+
+### LD&ASC Discharges
+
+```{r , fig.width=8}
+ptd_plt(disch_both , "increase", FALSE,"Number",  "Discharges - LD and ASC patients")
+```
+
+*Numbers of discharges across the South West are relatively small with a median of 4 per month,  numbers have fluctuated and are not showing any significant trend in either direction*
+
+### Other Discharges
+
+```{r , fig.width=8}
+ptd_plt(disch_other , "increase", FALSE,"Number",  "Discharges - Other patients")
+```
+
+*Numbers of discharges across the South West are relatively small with a median of 4 per month,  numbers have fluctuated and are not showing any significant trend in either direction*
+
+## Net change in numbers: admissions - discharges {.tabset .tabset-fade .tabset-pills}
+
+This shows the monthly change in ICB inpatient numbers if you take admissions minus discharges.
+
+### All change
+
+```{r , fig.width=8}
+ptd_plt(ad_dis   , "decrease", FALSE,"Number",  "Net change - All patients")
+```
+
+*The average net change of numbers over the last 2 years is zero.  However there does appear to be a possible reduction in the numbers trend over the last 8 months.  Numbers are small and therefore susceptible to variation.   *
+
+### LD change
+
+```{r , fig.width=8}
+ptd_plt(ad_dis_ld    , "decrease", FALSE,"Number",  "Net change - LD patients")
+```
+
+*The average net change of numbers over the last 2 years is zero.  However there does appear to be a possible reduction in the numbers trend over the last 8 months.  Numbers are small and therefore susceptible to variation.   *
+
+### ASC change
+
+```{r , fig.width=8}
+ptd_plt(ad_dis_asc, "decrease", FALSE,"Number",  "Net change - ASC patients")
+```
+
+*The average net change of numbers over the last 2 years is zero.  However there does appear to be a possible reduction in the numbers trend over the last 8 months.  Numbers are small and therefore susceptible to variation.   *
+
+### LD&ASC change
+
+```{r , fig.width=8}
+ptd_plt(ad_dis_both , "decrease", FALSE,"Number",  "Net change - LD and ASC patients")
+```
+
+*The average net change of numbers over the last 2 years is zero.  However there does appear to be a possible reduction in the numbers trend over the last 8 months.  Numbers are small and therefore susceptible to variation.   *
+
+### Other change
+
+```{r , fig.width=8}
+ptd_plt(ad_dis_other , "decrease", FALSE,"Number",  "Net change - Other patients")
+```
+
+*The average net change of numbers over the last 2 years is zero.  However there does appear to be a possible reduction in the numbers trend over the last 8 months.  Numbers are small and therefore susceptible to variation.   *
+
+## Length of stay breakdown over time {.tabset .tabset-fade .tabset-pills}
+
+Use slider to select month
+
+Bar shows percentage proportion of patients - number is actual number of patients in category.
+
+### ICB Patients
+
+```{r icb_los, fig.width=8, fig.height = 8}
+ccg_los_plot
+```
+
+
+### Specialist commissioned Patients
+
+```{r sc_los, fig.width=8, fig.height = 8}
+sc_los_plot
+```
+
+
+## Patients 2 year + Length of stay {.tabset .tabset-fade .tabset-pills}
+
+### Number of patients
+
+Number of inpatients at month end with a length of stay (based on spell) of over 2 years. 
+
+```{r no_two_yr, fig.width=8}
+p_los_2yr_no
+```
+
+*Numbers of patients with 2 year plus seems to be within common variation*
+
+### Percentage of patients
+
+Percentage of inpatients at month end with a length of stay (based on spell) of over 2 years compared to all patients. 
+
+```{r per_two_yr, fig.width=8}
+p_los_2yr_per
+```
+
+*Compared against the overall cohort the proportion of patients with a 2 year+ length we are seeing an increase, as the number of patients in this group has not increased, this would indicate that the number of patients with LOS less than 2 years has significantly deceased.  This would indicate more flow for short stayers whilst the long stayers are more static.*
+
+
+## Patients 2 year + Length of stay by system {.tabset .tabset-fade .tabset-pills}
+
+### Number of patients
+
+Number of inpatients at month end with a length of stay (based on spell) of over 2 years. 
+
+```{r no_two_yr_sy, fig.height = 10, fig.width=8}
+p_los_2yr_no_sy
+```
+
+*These graphs there is considerable variation from one system to the next.  Calculating and comparing straight numbers does not take into account the differences in the sizes of the systems.  To better compare the numbers a rate per 100,000 population would standardise the numbers.  The small numbers mean that trends are very likely one way or another.  Devon and BNSSG experiencing an upward trend and Dorset a downward trend. Again this would indiciate that more short term patients are being discharged whilst longer stayers are more static.*
+
+### Percentage of patients
+
+Percentage of inpatients at month end with a length of stay (based on spell) of over 2 years compared to all patients. 
+
+```{r per_two_yr_sy, fig.height = 10, fig.width=8}
+p_los_2yr_per_sy
+```
+
+*These graphs there is considerable variation from one system to the next.  This shows as a percentage of the local cohort.  Stand out is Gloucestershire which currently has 100% of it inpatients with a LOS of over 2 years, compared to Somerset which has seen a large reduction in the proportion.  Numbers are small and therefore subject to large variation.*
+
+## Specialised commissioning patients 2 year + Length of stay  {.tabset .tabset-fade .tabset-pills}
+
+### Number of patients . 
+
+```{r no_two_yr_sc, fig.width=8}
+p_los_2yr_no_sc
+```
+
+*Over the last 10 months we can see there has been a reduction in the trend of the number patients with a LOS of over 2 years.  However numbers are small and this is overall a reduction of about 7 patients so please be mindful of the scale of the graph.*
+
+### Percentage of patients
+
+Percentage of inpatients at month end with a length of stay (based on spell) of over 2 years compared to all patients in specialised commissioning placements. 
+
+```{r per_two_yr_sc, fig.width=8}
+p_los_2yr_per_sc
+```
+
+*Looking at the proportion of inpatients with a LOS of 2 years plus as a proportion of the patient cohort, this proportion has not changed significantly.*
+
+## Length of stay by bed type  {.tabset .tabset-fade .tabset-pills}
+
+Examination of ICB discharges based on bed type discharged from. A LOESS line has been fitted to try to indicate trend, this is not the average.  Numbers are very small and variable and so this was considered a better way to show direction of travel.  Individual dots represent a discharge in month and the spell LOS for that patient.
+
+### All bed types
+
+```{r , fig.width=8}
+  ad_los_all   
+```
+
+*This is a combination of all bed types.*
+
+### LD beds
+
+```{r , fig.width=8}
+  ad_los_ld      
+```
+
+*This is specifically LD designated beds.*
+
+### Other beds
+
+```{r , fig.width=8}
+  ad_los_ad      
+```
+
+*This is all other bed types, this would be adult acute, PICU and various other bed types.*
+
+
+## Patients in out of area placements  {.tabset .tabset-fade .tabset-pills}
+
+### Number of patients
+
+Number of inpatients at month end in an out of area placement (all reasons - includes appropriate and inappropriate)
+
+```{r no_ooa, fig.width=8}
+p_ooa_no
+```
+
+*There had been a significant increasing trend in the number of patients placed out of area.  However for the last 12 months we are experience a reduction.  There appears to a identifiable trend going down.*
+
+### Percentage of patients 
+
+Percentage of inpatients at month end in an out of area placement (all reasons - includes appropriate and inappropriate) compared to overall patient cohort.
+
+```{r per_oaa, fig.width=8}
+p_ooa_per
+```
+
+*There had been a significant increasing trend in the number of patients placed out of area which changed to a decreasing trend as a proportion of the overall cohort.  The last few months the proportion has stabilised*
+
+## Out of area patients by area  {.tabset .tabset-fade .tabset-pills}
+
+### South West
+
+```{r}
+ooa_area_sw()
+```
+
+
+### Dorset
+```{r}
+ooa_area('NHS DORSET')
+```
+
+### Devon
+```{r}
+ooa_area('NHS DEVON')
+```
+
+### Cornwall
+```{r}
+ooa_area('NHS CORNWALL')
+```
+
+### Gloucestershire
+```{r}
+ooa_area('NHS GLOUCESTERSHIRE')
+```
+
+### BSSNG
+```{r}
+ooa_area('NHS BRISTOL,')
+```
+
+### Somerset
+```{r}
+ooa_area('NHS SOMERSET')
+```
+
+### BSW
+```{r}
+ooa_area('NHS BATH')
+```
+
+
+
+## Inpatient numbers and trajectory  {.tabset .tabset-fade .tabset-pills} 
+
+### South West
+
+Number of adult inpatients as at month end.  Trajectory shown as straight line from current inpatient numbers to target of 130 by March 2024.
+
+```{r imps_p, fig.width=8}
+imps_p
+```
+
+*Between June 21 and March 22 there was a increase in the number of inpatients, latest data seems to indicate a reducing trend.  However there is considerable variance from current position to target with a number of ICBs some way off achieving target and no indication of moving towards target.*
+
+
+### Dorset
+```{r, fig.width=8}
+traj_chart('NHS DORSET',18)
+```
+
+### Devon
+```{r, fig.width=8}
+traj_chart('NHS DEVON',28)
+```
+
+### Cornwall
+```{r, fig.width=8}
+traj_chart('NHS CORNWALL',13)
+```
+
+### Gloucestershire
+```{r, fig.width=8}
+traj_chart('NHS GLOUCESTERSHIRE',15)
+```
+
+### BSSNG
+```{r, fig.width=8}
+traj_chart('NHS BRISTOL,',21)
+```
+
+### Somerset
+```{r, fig.width=8}
+traj_chart('NHS SOMERSET',13)
+```
+
+### BSW
+```{r, fig.width=8}
+traj_chart('NHS BATH',22)
+```
+
+
+## Data explorer current inpatients
+
+You can click and drag filters to see breakdown of current patient cohort by several factors.
+
+```{r}
+rpivotTable(LD_current, rows = c('ccgorsc', 'system'))
+
+```
+
+
+
