@@ -912,3 +912,5 @@ FodyWeavers.xsd
 
 .xls*
 *.xlsx
+.Rproj.user
+.Rhistory
